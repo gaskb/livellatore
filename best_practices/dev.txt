@@ -1,0 +1,58 @@
+1. Scrivi Codice per gli Esseri Umani (Clean Code)
+Il codice viene letto molte più volte di quante venga scritto. Usa nomi di variabili e funzioni descrittivi e pronunciabili.
+
+No: d = 86400;
+
+Sì: SECONDS_IN_A_DAY = 86400;
+
+2. Rispetta i Principi SOLID
+I cinque principi SOLID sono la base della programmazione a oggetti (ma applicabili anche altrove) per rendere il software flessibile e scalabile. Il più importante è il Single Responsibility Principle: ogni modulo o classe deve avere un'unica responsabilità.
+
+3. Don't Repeat Yourself (DRY)
+Evita la duplicazione del codice. Se ti ritrovi a fare "copia e incolla" della stessa logica in due punti diversi, estraila in una funzione o in una classe riutilizzabile. La duplicazione raddoppia lo sforzo necessario per correggere bug futuri.
+
+4. Keep It Simple, Stupid (KISS)
+La complessità è il nemico del software. Evita l'over-engineering: non progettare sistemi ultra-complessi per problemi semplici o per necessità che "forse" avrai in futuro. La soluzione più semplice è spesso quella corretta.
+
+5. Implementa i Test Automatizzati
+Non puoi essere sicuro che il tuo codice funzioni (o che non si rompa dopo una modifica) senza i test.
+Unit Test: Per testare singole funzioni.
+Integration Test: Per testare come i componenti lavorano insieme.
+
+6. Versionamento del Codice (Git)
+Usa sempre un sistema di controllo versione come Git. Fai commit piccoli, frequenti e con messaggi chiari. Questo permette di tracciare la storia del progetto e collaborare senza sovrascrivere il lavoro altrui.
+
+7. Code Review
+Non unire mai il tuo codice al ramo principale senza che un collega lo abbia revisionato. Le code review non servono solo a trovare bug, ma sono il miglior strumento di condivisione della conoscenza all'interno di un team.
+
+8. Gestione degli Errori e Logging
+Non ignorare mai le eccezioni (evita blocchi catch vuoti). Gestisci gli errori in modo che l'utente riceva un feedback utile e che tu, tramite i log, possa capire esattamente cosa è successo in produzione senza dover "indovinare".
+
+9. Documentazione (Giusta e Necessaria)
+Il codice dovrebbe essere "auto-documentante" grazie a buoni nomi, ma la logica complessa e le API hanno bisogno di documentazione esterna (es. README, Swagger per le API). Evita commenti ovvi come // incrementa i che sporcano solo il file.
+
+10. Separation of Concerns (SoC)
+Separa nettamente i vari livelli dell'applicazione. Ad esempio, la logica che gestisce l'interfaccia utente (UI) non dovrebbe mai contenere logica di accesso al database. Questo rende i componenti indipendenti e facilmente sostituibili.
+
+11. Se possibile mantieni i file sotto le 500 righe di codice
+
+12. Aggiungi Feature Flag per le funzionalita costose
+Per opzioni che aumentano costo o latenza (es. invio immagini), usa sempre un flag esplicito in UI e config utente. Il default deve essere conservativo (spento) e il comportamento deve essere chiaramente tracciato nei log.
+
+13. Definisci un Budget di Token e Degrada in modo controllato
+Prima di inviare richieste grandi, applica limiti configurabili (max elementi, DPI, lunghezza testo) e fallback progressivi. Esempio: riduci il numero di immagini o la risoluzione prima di fallire.
+
+14. Log Strutturati e Diagnostici
+I log devono rispondere velocemente a: cosa e stato attivato, cosa e stato scartato, perche, e con quale impatto in token/tempo. Evita rumore e preferisci sezioni sintetiche con contatori + esempi.
+
+15. Validazione Input/Config con Guardrail
+Ogni valore letto da config utente deve essere validato, normalizzato e clampato a range sicuri. Se il valore e invalido, usa default sicuri e logga il fallback.
+
+16. Programmazione Difensiva verso API Esterne
+Gestisci in modo esplicito errori HTTP, timeout, risposte troncate e payload inattesi. I messaggi di errore devono indicare l'azione correttiva consigliata.
+
+17. Testa i Casi Limite oltre il Percorso Felice
+Oltre ai test standard, copri casi di config corrotta, assenza di contenuti attesi, fallback, limiti raggiunti e regressioni di logging. I test devono bloccare il ritorno di bug gia risolti.
+
+18. Separa Orchestrazione, Dominio e Integrazioni
+Riduci i file monolitici dividendo: logica dominio (regole), adattatori esterni (InDesign/API), e orchestrazione flusso. Questo aumenta testabilita, riuso e facilita di review.
