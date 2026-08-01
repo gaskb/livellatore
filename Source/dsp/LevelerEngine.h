@@ -1,0 +1,53 @@
+#pragma once
+
+#include "LoudnessMeter.h"
+#include "GainRider.h"
+#include "Limiter.h"
+#include <juce_dsp/juce_dsp.h>
+
+namespace livellatore
+{
+
+/**
+ * Orchestratore della catena DSP: input gain -> misura loudness -> gain
+ * rider -> output (makeup) gain -> limiter. Non conosce APVTS/JUCE plugin
+ * wrapper: riceve solo parametri "grezzi" e buffer audio, per restare
+ * testabile in isolamento (vedi Tests/).
+ */
+class LevelerEngine
+{
+public:
+    void prepare (const juce::dsp::ProcessSpec& spec);
+    void reset();
+
+    void setInputGainDb (float db) noexcept { inputGainDb = db; }
+    void setTargetLufs (float lufs) noexcept { gainRider.setTargetLufs (lufs); }
+    void setAttackMs (float ms) noexcept { gainRider.setAttackMs (ms); }
+    void setReleaseMs (float ms) noexcept { gainRider.setReleaseMs (ms); }
+    void setOutputGainDb (float db) noexcept { outputGainDb = db; }
+    void setLimiterThresholdDb (float db) noexcept { limiter.setThresholdDb (db); }
+
+    void process (juce::AudioBuffer<float>& buffer);
+
+    // --- Metering per la GUI ---
+    float getInputLevelDb() const noexcept { return inputLevelDb; }
+    float getOutputLevelDb() const noexcept { return outputLevelDb; }
+    float getRiderGainDb() const noexcept { return gainRider.getCurrentGainDb(); }
+    float getLimiterGainReductionDb() const noexcept { return limiter.getGainReductionDb(); }
+    float getCurrentLoudnessLufs() const noexcept { return loudnessMeter.getLoudnessLufs(); }
+
+private:
+    double sampleRate = 44100.0;
+
+    float inputGainDb = 0.0f;
+    float outputGainDb = 0.0f;
+
+    LoudnessMeter loudnessMeter;
+    GainRider gainRider;
+    Limiter limiter;
+
+    std::atomic<float> inputLevelDb { -100.0f };
+    std::atomic<float> outputLevelDb { -100.0f };
+};
+
+} // namespace livellatore

@@ -1,0 +1,19 @@
+# Build output
+build/
+Builds/
+cmake-build-*/
+
+# JUCE fetched via CMake FetchContent
+_deps/
+
+# macOS
+.DS_Store
+
+# Editor/IDE
+.vscode/
+.idea/
+*.xcodeproj/
+*.xcworkspace/
+
+# Scratch / non-versioned reference material
+/temp/

@@ -1,0 +1,142 @@
+Backlog su GitLab — convenzioni e procedura
+
+Questo file spiega come impostare e usare un backlog basato su issue GitLab:
+a un LLM (Claude Code) che deve crearlo/aggiornarlo in un progetto, e a una
+persona che vuole capire le regole senza doverle dedurre da uno script. È
+scritto per essere riusabile in progetti diversi da quello in cui è nato:
+non contiene riferimenti hardcoded a un'istanza o a un progetto specifico,
+salvo dove esplicitamente indicato come esempio.
+
+Rispetto a un backlog su file di testo nel repo (schema precedente,
+BACKLOG_TODO.md/BACKLOG_DONE.md), le issue GitLab danno gratis: stato
+open/closed, ricerca/filtri, label, e link nativi tra item. Il costo è che
+serve un'istanza GitLab raggiungibile e un minimo di setup CLI. Vale la pena
+quando il backlog deve essere consultabile anche fuori da un editor di testo
+o condiviso con altri.
+
+0. Prerequisiti e autenticazione
+   Serve il CLI ufficiale `glab` (su macOS: `brew install glab`), un
+   progetto GitLab già esistente per il repo, e un Personal Access Token
+   con scope `api`.
+
+   L'autenticazione va fatta dall'utente nel proprio terminale, MAI
+   incollando il token nella chat con l'LLM (finirebbe salvato nella
+   cronologia della conversazione):
+     glab auth login --hostname <host> [--api-protocol http]
+   `--api-protocol http` serve solo se l'istanza non ha TLS; in quel caso
+   il token viaggia in chiaro sulla rete ad ogni chiamata — accettabile
+   solo su rete privata/VPN, da evitare se l'istanza è esposta su internet
+   pubblico.
+
+   GOTCHA IMPORTANTE — pin esplicito dell'host: `glab api` sceglie l'host
+   in automatico guardando i remote git della directory corrente; se
+   lavora da una directory che NON è un repo git (es. uno scratchpad
+   temporaneo usato per script di migrazione), fa fallback silenzioso su
+   `gitlab.com`. Risultato concreto osservato: uno script di import che
+   girava da /tmp ha mandato diverse richieste (con tanto di token nel
+   header `Private-Token`) a gitlab.com invece che all'istanza self-hosted
+   prevista, fallendo l'auth ma probabilmente lasciando il token nei log
+   del server sbagliato. Regola fissa: ogni comando `glab api` in uno
+   script deve specificare esplicitamente `--hostname <host>`, senza
+   fare affidamento sul rilevamento automatico. Se questo succede per
+   davvero, il token va rigenerato per prudenza.
+
+1. Le issue GitLab sono il backlog, non ci sono più file locali
+   Niente `backlog/todo.md` o `backlog/done.md`: l'item è l'issue GitLab
+   stessa. Lo stato open/closed dell'issue sostituisce i tag testuali
+   `[APERTO]`/`[DONE]`. Il numero di riferimento di un item è il suo IID
+   GitLab (`#42`, o `namespace/progetto#42` fuori dal progetto), non una
+   numerazione locale da mantenere a mano: GitLab lo assegna e lo tiene
+   univoco da solo.
+   Se un backlog preesistente su file viene importato, riporta la vecchia
+   numerazione come nota nella descrizione ("Numerazione locale: 33c") solo
+   per tracciabilità storica — non è più il riferimento da usare per
+   parlarne, quello diventa `#IID`.
+
+2. Stima in abeti, scala 1, 2, 3, 5, 8, 13, 21 — come scoped label
+   Ogni item porta una stima di effort in "abeti", su scala di Fibonacci
+   (1, 2, 3, 5, 8, 13, 21) invece che lineare: lo stesso principio degli
+   story point in Scrum/Agile, i valori disponibili si diradano man mano
+   che salgono perché cresce l'incertezza della stima, invece di offrire
+   una falsa precisione (es. "è un 6 o un 7?").
+
+   Su GitLab si rappresenta con una scoped label (usa `::` nel nome:
+   GitLab la raggruppa e la mostra a scelta singola nella UI):
+     abeti::1   abeti::2   abeti::3   abeti::5
+     abeti::8   abeti::13  abeti::21
+     abeti::da-stimare   (item non ancora stimato — va segnalato, non
+                          lasciato senza label: usa un colore rosso acceso
+                          che risalti rispetto al gradiente delle altre)
+
+   Colore consigliato: gradiente verde→rosso al crescere della stima
+   (facile=verde, 21=rosso scuro), `abeti::da-stimare` in rosso acceso
+   distinto dal gradiente. Esempio di creazione via API (`glab api
+   projects/:id/labels -X POST -F name=abeti::N -F color=#RRGGBB`).
+
+   Se in prosa (commit, chat, issue collegate) serve un riferimento veloce
+   alla fascia senza aprire l'issue, si può ancora usare la notazione
+   testuale a fasce con l'emoji abete 🌲, numero esatto tra parentesi
+   allineato a due cifre e ripetizioni per fascia di complessità (non 1:1
+   col valore):
+     ( 1) 🌲            1 o 2  → facile
+     ( 3) 🌲🌲          3 o 5  → facile/intermedio
+     ( 8) 🌲🌲🌲        8      → intermedio, tocca più parti
+     (13) 🌲🌲🌲🌲      13     → complesso, spesso multi-sessione
+     (21) 🌲🌲🌲🌲🌲    21     → troppo grande per un item unico, va
+                                 scomposto in sotto-issue prima di iniziare
+     ( ?) 🛑            stima mancante, da chiarire prima di lavorarci
+
+3. Titolo e descrizione dell'issue
+   Titolo: testo libero e conciso, senza numerazione manuale (l'IID la
+   sostituisce). Descrizione: il testo della richiesta/feature; se
+   l'item viene chiuso aggiungendo una nota di completamento, includi
+   sempre cosa è stato fatto E cosa è stato deliberatamente lasciato fuori
+   (scope tagliato, casi non gestiti) — non riscrivere/ripulire la
+   richiesta originale, la nota serve a chi legge dopo per capire la
+   storia reale, non una versione idealizzata.
+
+4. Dipendenze e scomposizione — solo relates_to, verificato
+   GitLab supporta nativamente link tipizzati tra issue (`blocks` /
+   `is_blocked_by` / `relates_to`), ma su un'istanza self-hosted
+   Community Edition SENZA licenza (verificato empiricamente su GitLab CE
+   19.2.1: `GET /version` risponde `"enterprise": false`) l'API rifiuta
+   `blocks`/`is_blocked_by` con l'errore poco chiaro `"link_type does not
+   have a valid value"`. Solo `relates_to` è disponibile. Non perdere
+   tempo a ridebuggare questo errore in futuro: su CE senza licenza è
+   semplicemente non abilitato, non è un problema di permessi o sintassi.
+
+   Convenzione adottata per compensare la mancata tipizzazione nativa:
+   crea comunque il link `relates_to` (compare nella sidebar dell'issue
+   ed è navigabile), E aggiungi una riga esplicita in fondo alla
+   descrizione con la semantica che GitLab non distingue da solo:
+     **Dipende da (bloccante):** #12, #15
+     **Collegato a (side-effect, non bloccante):** #7
+   Per la scomposizione di un item troppo grande (stima 21) in sotto-issue,
+   stessa cosa: link `relates_to` fra genitore e ciascun figlio, più le
+   righe esplicite:
+     **Sotto-item:** #20, #21, #22
+     **Genitore:** #19
+
+5. Note operative per Claude Code sul CLI `glab`
+   - `-f`/`--raw-field` passa solo stringhe letterali grezze; con testo
+     multi-riga rompe la codifica della richiesta (JSON malformato lato
+     client). Usa sempre `-F`/`--field`, che tipizza automaticamente e in
+     più supporta `valore=@percorso/file` per leggere il contenuto da
+     file — è l'unico modo affidabile di passare una description
+     multi-riga.
+   - Per body JSON complessi (array/oggetti annidati) niente `-f`/`-F`:
+     usa `--input file.json` con un body già serializzato correttamente.
+   - Rate limiting: raffiche di richieste ravvicinate (creazione bulk di
+     issue) possono causare errori 401/429 temporanei — non è detto sia
+     davvero il rate limiter dell'istanza target (vedi il gotcha
+     sull'host sbagliato al punto 0: una causa alternativa concreta è
+     che le richieste stiano silenziosamente finendo altrove). Se il pin
+     esplicito dell'host non risolve, aggiungi comunque un ritardo di
+     1.5–3.5s tra chiamate scritte e un retry con backoff esponenziale;
+     è economico da aggiungere e innocuo se il problema era altrove.
+
+6. Come richiedere lavoro
+   Per chiedere lavoro a un LLM su questo progetto: riferisci le issue per
+   IID (`#42`) nella richiesta invece di scrivere prosa libera altrove
+   (es. `readme.txt`). Un solo posto dove cercare "cosa c'è da fare", con
+   priorità/effort/dipendenze visibili nella issue stessa.
