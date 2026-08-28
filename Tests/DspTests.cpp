@@ -2,6 +2,7 @@
 #include "dsp/GainRider.h"
 #include <juce_core/juce_core.h>
 #include <juce_audio_basics/juce_audio_basics.h>
+#include <complex>
 
 using namespace livellatore;
 
@@ -22,6 +23,77 @@ namespace
             buffer.setSample (1, i, sample);
         }
         return buffer;
+    }
+
+    // Risposta in frequenza di un biquad in forma diretta normalizzata
+    // (a0 = 1): H(z) = (b0 + b1 z^-1 + b2 z^-2) / (1 + a1 z^-1 + a2 z^-2).
+    std::complex<double> biquadResponse (double b0, double b1, double b2,
+                                          double a1, double a2,
+                                          double frequency, double sampleRate)
+    {
+        const double w = juce::MathConstants<double>::twoPi * frequency / sampleRate;
+        const std::complex<double> z1 = std::polar (1.0, -w);
+        const std::complex<double> z2 = std::polar (1.0, -2.0 * w);
+        const std::complex<double> num = b0 + b1 * z1 + b2 * z2;
+        const std::complex<double> den = 1.0 + a1 * z1 + a2 * z2;
+        return num / den;
+    }
+
+    // Ricalcolo indipendente (stessa formula di
+    // LoudnessMeter::makeKWeightingFilters, ITU-R BS.1770-4 Annex 1) del
+    // guadagno combinato pre-filter + RLB alla frequenza data. Serve a
+    // validare che il filtro IIR realizzato a runtime (coefficienti float,
+    // elaborazione per-sample) riproduca davvero la risposta K-weighting
+    // attesa su tutto lo spettro, non solo vicino a 1kHz.
+    double expectedKWeightingGainLinear (double frequency, double sampleRate)
+    {
+        double preB0, preB1, preB2, preA1, preA2;
+        {
+            const double f0 = 1681.9744509555319;
+            const double G  = 3.99984385397;
+            const double Q  = 0.7071752369554193;
+            const double K  = std::tan (juce::MathConstants<double>::pi * f0 / sampleRate);
+            const double Vh = std::pow (10.0, G / 20.0);
+            const double Vb = std::pow (Vh, 0.4996667741545416);
+            const double a0 = 1.0 + K / Q + K * K;
+            preB0 = (Vh + Vb * K / Q + K * K) / a0;
+            preB1 = 2.0 * (K * K - Vh) / a0;
+            preB2 = (Vh - Vb * K / Q + K * K) / a0;
+            preA1 = 2.0 * (K * K - 1.0) / a0;
+            preA2 = (1.0 - K / Q + K * K) / a0;
+        }
+
+        double rlbB0, rlbB1, rlbB2, rlbA1, rlbA2;
+        {
+            const double f0 = 38.13547087602444;
+            const double Q  = 0.5003270373238773;
+            const double K  = std::tan (juce::MathConstants<double>::pi * f0 / sampleRate);
+            const double a0 = 1.0 + K / Q + K * K;
+            // Il numeratore del passa-alto RLB resta (1, -2, 1) senza
+            // ulteriore normalizzazione per a0: e' il valore pubblicato in
+            // BS.1770-4 Annex 1 (stesso usato da libebur128/ffmpeg ebur128/
+            // pyloudnorm), a differenza dello shelving stage sopra.
+            rlbB0 = 1.0;
+            rlbB1 = -2.0;
+            rlbB2 = 1.0;
+            rlbA1 = 2.0 * (K * K - 1.0) / a0;
+            rlbA2 = (1.0 - K / Q + K * K) / a0;
+        }
+
+        const auto preResponse = biquadResponse (preB0, preB1, preB2, preA1, preA2, frequency, sampleRate);
+        const auto rlbResponse = biquadResponse (rlbB0, rlbB1, rlbB2, rlbA1, rlbA2, frequency, sampleRate);
+        return std::abs (preResponse) * std::abs (rlbResponse);
+    }
+
+    // LUFS attesa per una sinusoide a piena scala (0dBFS di picco) dopo
+    // K-weighting con guadagno lineare noto: RMS di una sinusoide piena
+    // scala e' 1/sqrt(2) (-3.0103 dBFS), poi -0.691 e' l'offset K-weighting
+    // di BS.1770.
+    float expectedLufsForFullScaleSine (double frequency, double sampleRate)
+    {
+        const double gainLinear = expectedKWeightingGainLinear (frequency, sampleRate);
+        const double meanSquare = (gainLinear * gainLinear) / 2.0;
+        return (float) (-0.691 + 10.0 * std::log10 (meanSquare));
     }
 }
 
@@ -45,23 +117,72 @@ public:
             expectLessThan (meter.getLoudnessLufs(), -90.0f);
         }
 
-        beginTest ("Sinusoide 1kHz a 0dBFS ha loudness prossima a -3 LUFS");
+        beginTest ("Risposta K-weighting multi-frequenza corrisponde al design atteso (issue #1)");
         {
+            // Copre basso (attenuato dal passa-alto RLB), medio (~piatto) e
+            // alto (boost dello shelf): un bug di segno o di coefficiente
+            // in una sola delle due bande non verrebbe rilevato testando
+            // solo 1kHz.
+            const double frequencies[] = { 60.0, 200.0, 1000.0, 3000.0, 8000.0 };
+
+            for (const double frequency : frequencies)
+            {
+                LoudnessMeter meter;
+                meter.prepare (testSampleRate, 2);
+                meter.setWindowSeconds (3.0f);
+
+                double phase = 0.0;
+                for (int i = 0; i < 300; ++i)
+                {
+                    auto block = makeSineBlock (512, frequency, testSampleRate, phase);
+                    meter.pushBlock (block);
+                }
+
+                const float measured = meter.getLoudnessLufs();
+                const float expected = expectedLufsForFullScaleSine (frequency, testSampleRate);
+
+                expectWithinAbsoluteError (measured, expected, 0.3f,
+                    "A " + juce::String (frequency) + "Hz atteso " + juce::String (expected)
+                        + " LUFS, ottenuto " + juce::String (measured));
+            }
+        }
+
+        beginTest ("La finestra scorrevole dimentica un transiente forte dopo windowSeconds di silenzio (issue #1)");
+        {
+            // Segnale non stazionario: un burst forte seguito da silenzio.
+            // Verifica che la finestra rettangolare "dimentichi" gradualmente
+            // il burst (non un reset istantaneo) e converga al pavimento una
+            // volta che il burst e' interamente uscito dalla finestra.
             LoudnessMeter meter;
             meter.prepare (testSampleRate, 2);
-            meter.setWindowSeconds (3.0f);
+            meter.setWindowSeconds (1.0f);
 
             double phase = 0.0;
-            // Riempi la finestra (3s) di segnale stazionario
-            for (int i = 0; i < 300; ++i)
+            for (int i = 0; i < 100; ++i) // ~1.06s di segnale forte, riempie la finestra
             {
                 auto block = makeSineBlock (512, 1000.0, testSampleRate, phase);
                 meter.pushBlock (block);
             }
+            const float loudLufs = meter.getLoudnessLufs();
+            expectGreaterThan (loudLufs, -10.0f);
 
-            const float lufs = meter.getLoudnessLufs();
-            expect (lufs > -4.5f && lufs < -2.5f,
-                    "Atteso circa -3 LUFS, ottenuto " + juce::String (lufs));
+            juce::AudioBuffer<float> silence (2, 512);
+            silence.clear();
+
+            // A meta' del periodo di svuotamento la finestra e' un mix di
+            // burst residuo e silenzio: ne' al livello iniziale ne' al
+            // pavimento.
+            for (int i = 0; i < 50; ++i)
+                meter.pushBlock (silence);
+            const float midLufs = meter.getLoudnessLufs();
+            expect (midLufs < loudLufs - 2.0f && midLufs > -90.0f,
+                    "Atteso un valore intermedio, ottenuto " + juce::String (midLufs));
+
+            // Dopo windowSeconds pieni di silenzio il burst e' uscito
+            // interamente dalla finestra.
+            for (int i = 0; i < 60; ++i)
+                meter.pushBlock (silence);
+            expectLessThan (meter.getLoudnessLufs(), -90.0f);
         }
     }
 };

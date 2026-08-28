@@ -14,6 +14,15 @@ namespace livellatore
  * Non implementa il gating relativo/assoluto della loudness integrata:
  * qui serve solo una stima continua per pilotare il gain rider, non una
  * misura conforme per la compliance broadcast.
+ *
+ * Decisione (issue #1): niente finestra "momentary" (400ms) separata.
+ * Quella distinzione serve per la loudness integrata da compliance
+ * broadcast (dove il momentary alimenta il gating relativo); qui il solo
+ * scopo è pilotare in continuo il gain rider, per cui la finestra singola
+ * configurabile (setWindowSeconds) basta — un valore più corto si comporta
+ * già come una stima "momentary-like" senza bisogno di una seconda finestra
+ * parallela. Se in futuro servisse comunque (es. per un secondo meter in
+ * GUI più reattivo), va riaperta come nuovo item di backlog.
  */
 class LoudnessMeter
 {
