@@ -41,6 +41,7 @@ void LivellatoreAudioProcessor::updateEngineParametersFromState()
     engine.setTargetLufs (apvts.getRawParameterValue (ParamID::targetLufs)->load());
     engine.setAttackMs (apvts.getRawParameterValue (ParamID::attack)->load());
     engine.setReleaseMs (apvts.getRawParameterValue (ParamID::release)->load());
+    engine.setGateThresholdLufs (apvts.getRawParameterValue (ParamID::gateThreshold)->load());
     engine.setLimiterThresholdDb (apvts.getRawParameterValue (ParamID::limiter)->load());
     engine.setOutputGainDb (apvts.getRawParameterValue (ParamID::outputGain)->load());
 }
