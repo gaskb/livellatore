@@ -3,6 +3,7 @@ add_executable(LivellatoreTests
     DspTests.cpp
     PresetManagerTests.cpp
     LimiterTests.cpp
+    LevelerEngineTests.cpp
     ${CMAKE_SOURCE_DIR}/Source/dsp/LoudnessMeter.cpp
     ${CMAKE_SOURCE_DIR}/Source/dsp/GainRider.cpp
     ${CMAKE_SOURCE_DIR}/Source/dsp/Limiter.cpp
