@@ -17,3 +17,6 @@ _deps/
 
 # Scratch / non-versioned reference material
 /temp/
+
+# Pacchetti generati da scripts/package_macos.sh
+/Livellatore-*.zip
