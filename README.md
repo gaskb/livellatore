@@ -76,6 +76,18 @@ plugin con altri (Gatekeeper la rifiuterebbe su un'altra macchina).
 - **Installer .pkg**: non ancora fatto; per un plugin agli inizi uno zip
   con istruzioni è sufficiente, un installer vero e proprio (`pkgbuild`/
   `productbuild`) è rimandato a quando servirà davvero.
+- **Verifica versione installata**: `./scripts/check_version.sh` confronta
+  la versione dichiarata in `project(Livellatore VERSION X.Y.Z)` con
+  quella effettivamente installata in `~/Library/Audio/Plug-Ins/` (quella
+  che vede un DAW). Nato da un caso reale: `cmake -B build` rigenera
+  subito l'Info.plist/moduleinfo.json nella cartella di build per ogni
+  target (è un passo di configure), ma la copia installata si aggiorna
+  solo quando quel target viene davvero ricompilato — un
+  `cmake --build build --target <solo-alcuni-target>` può lasciare il
+  sorgente già aggiornato ma il plugin installato ancora fermo alla
+  versione precedente, senza nessun errore. **Dopo ogni bump di versione,
+  buildare per intero con `cmake --build build --config Release`** (non
+  target parziali) e poi lanciare questo script per conferma.
 
 ### Windows e Linux
 
