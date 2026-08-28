@@ -21,6 +21,10 @@ void LivellatoreAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     engine.prepare (spec);
     updateEngineParametersFromState();
+
+    // Il limiter con lookahead (#9) introduce latenza: va dichiarata
+    // all'host per un plugin delay compensation corretto.
+    setLatencySamples (engine.getLatencySamples());
 }
 
 void LivellatoreAudioProcessor::releaseResources()
