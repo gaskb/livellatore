@@ -231,6 +231,59 @@ public:
 
             expectLessThan (std::abs (gainDb), 1.0f);
         }
+
+        beginTest ("Gate con isteresi: non chiude/riapre per piccole oscillazioni intorno alla soglia (issue #2)");
+        {
+            GainRider rider;
+            rider.prepare (testSampleRate);
+            rider.setTargetLufs (-16.0f);
+            rider.setAttackMs (50.0f);
+            rider.setReleaseMs (200.0f);
+            rider.setGateThresholdLufs (-60.0f); // banda di isteresi: [-61.5, -58.5]
+
+            for (int i = 0; i < 200; ++i)
+                rider.computeGainDb (-20.0f, 0.01);
+            expect (rider.isGateOpen(), "Il gate dovrebbe essere aperto ben sopra soglia");
+
+            for (int i = 0; i < 50; ++i)
+                rider.computeGainDb (-60.0f, 0.01); // dentro la banda di isteresi
+            expect (rider.isGateOpen(), "Il gate non dovrebbe chiudersi dentro la banda di isteresi");
+
+            for (int i = 0; i < 10; ++i)
+                rider.computeGainDb (-70.0f, 0.01); // sotto la soglia di chiusura
+            expect (! rider.isGateOpen(), "Il gate dovrebbe chiudersi sotto la soglia di chiusura");
+
+            for (int i = 0; i < 10; ++i)
+                rider.computeGainDb (-60.0f, 0.01); // dentro la banda: non deve riaprirsi da solo
+            expect (! rider.isGateOpen(), "Il gate non dovrebbe riaprirsi dentro la banda di isteresi");
+
+            for (int i = 0; i < 10; ++i)
+                rider.computeGainDb (-20.0f, 0.01); // sopra la soglia di apertura
+            expect (rider.isGateOpen(), "Il gate dovrebbe riaprirsi sopra la soglia di apertura");
+        }
+
+        beginTest ("Gate chiuso: il gain rilassa verso 0 invece di inseguire il rumore di fondo");
+        {
+            GainRider rider;
+            rider.prepare (testSampleRate);
+            rider.setTargetLufs (-16.0f);
+            rider.setAttackMs (50.0f);
+            rider.setReleaseMs (200.0f);
+            rider.setGateThresholdLufs (-60.0f);
+
+            for (int i = 0; i < 500; ++i)
+                rider.computeGainDb (-26.0f, 0.01);
+            expectGreaterThan (rider.getCurrentGainDb(), 8.0f);
+
+            // Il segnale scende sotto la soglia del gate: anche se e' ben
+            // lontano dal target, il rider non deve inseguirlo.
+            float gainDb = 0.0f;
+            for (int i = 0; i < 500; ++i)
+                gainDb = rider.computeGainDb (-75.0f, 0.01);
+
+            expect (! rider.isGateOpen());
+            expectLessThan (std::abs (gainDb), 1.0f);
+        }
     }
 };
 

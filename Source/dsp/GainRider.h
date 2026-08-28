@@ -15,6 +15,17 @@ namespace livellatore
  *    correzione maggiore di quella attuale.
  *  - release: quanto velocemente il gain torna verso 0 (livello originale)
  *    quando la correzione necessaria si riduce.
+ *
+ * Gate (vedi issue #2): sotto la soglia impostata il rider smette di
+ * inseguire il target e rilassa verso 0, per non amplificare il rumore di
+ * fondo in assenza di segnale utile. Usa un trigger di Schmitt (apre/chiude
+ * a soglie leggermente diverse) invece di un confronto a soglia singola,
+ * per evitare "chattering" quando il segnale oscilla proprio intorno alla
+ * soglia. Non esiste un controllo "Gate Speed" separato in questa versione:
+ * la velocità di rilascio quando il gate chiude è derivata dal release
+ * esistente (decisione presa per non aggiungere un settimo parametro senza
+ * un'evidenza concreta che serva davvero — se in ascolto risultasse troppo
+ * lento/veloce, va riaperta come nuovo item di backlog).
  */
 class GainRider
 {
@@ -26,6 +37,7 @@ public:
     void setAttackMs (float ms) noexcept { attackMs = juce::jmax (1.0f, ms); }
     void setReleaseMs (float ms) noexcept { releaseMs = juce::jmax (1.0f, ms); }
     void setMaxCorrectionDb (float db) noexcept { maxCorrectionDb = db; }
+    void setGateThresholdLufs (float lufs) noexcept { gateThresholdLufs = lufs; }
 
     /**
      * Da chiamare una volta per blocco con la loudness corrente misurata e
@@ -36,6 +48,7 @@ public:
     float computeGainDb (float currentLufs, double deltaTimeSeconds) noexcept;
 
     float getCurrentGainDb() const noexcept { return smoothedGainDb; }
+    bool isGateOpen() const noexcept { return gateOpen; }
 
 private:
     double sampleRate = 44100.0;
@@ -44,7 +57,13 @@ private:
     float attackMs = 200.0f;
     float releaseMs = 800.0f;
     float maxCorrectionDb = 24.0f;
+    float gateThresholdLufs = -60.0f;
 
+    // Larghezza dell'isteresi del gate (schmitt trigger): apre sopra
+    // (soglia + metà banda), chiude sotto (soglia - metà banda).
+    static constexpr float gateHysteresisDb = 3.0f;
+
+    bool gateOpen = true;
     float smoothedGainDb = 0.0f;
 };
 

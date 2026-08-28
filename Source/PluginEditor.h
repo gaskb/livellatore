@@ -28,7 +28,7 @@ private:
     VuMeterComponent riderActivityMeter { "RIDER", -24.0f, 24.0f };
 
     LevelSliderComponent inputGainSlider, targetLevelSlider, attackSlider,
-                          releaseSlider, limiterSlider, outputGainSlider;
+                          releaseSlider, gateThresholdSlider, limiterSlider, outputGainSlider;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LivellatoreAudioProcessorEditor)
 };

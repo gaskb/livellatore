@@ -10,6 +10,7 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
       targetLevelSlider (p.apvts, ParamID::targetLufs, "Target Level"),
       attackSlider (p.apvts, ParamID::attack, "Attack"),
       releaseSlider (p.apvts, ParamID::release, "Release"),
+      gateThresholdSlider (p.apvts, ParamID::gateThreshold, "Gate Threshold"),
       limiterSlider (p.apvts, ParamID::limiter, "Limiter"),
       outputGainSlider (p.apvts, ParamID::outputGain, "Output Gain")
 {
@@ -23,10 +24,11 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     addAndMakeVisible (targetLevelSlider);
     addAndMakeVisible (attackSlider);
     addAndMakeVisible (releaseSlider);
+    addAndMakeVisible (gateThresholdSlider);
     addAndMakeVisible (limiterSlider);
     addAndMakeVisible (outputGainSlider);
 
-    setSize (520, 360);
+    setSize (520, 420);
     startTimerHz (30);
 }
 
@@ -67,6 +69,8 @@ void LivellatoreAudioProcessorEditor::resized()
     attackSlider.setBounds (bounds.removeFromTop (rowHeight));
     bounds.removeFromTop (8);
     releaseSlider.setBounds (bounds.removeFromTop (rowHeight));
+    bounds.removeFromTop (8);
+    gateThresholdSlider.setBounds (bounds.removeFromTop (rowHeight));
     bounds.removeFromTop (8);
     limiterSlider.setBounds (bounds.removeFromTop (rowHeight));
     bounds.removeFromTop (8);

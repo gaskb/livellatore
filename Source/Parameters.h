@@ -11,6 +11,7 @@ namespace ParamID
     static constexpr auto targetLufs = "targetLufs";
     static constexpr auto attack     = "attack";
     static constexpr auto release    = "release";
+    static constexpr auto gateThreshold = "gateThreshold";
     static constexpr auto limiter    = "limiterThreshold";
     static constexpr auto outputGain = "outputGain";
 }
@@ -39,6 +40,11 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         juce::ParameterID { ParamID::release, 1 }, "Release",
         Range { 50.0f, 5000.0f, 1.0f, 0.4f }, 800.0f,
         juce::AudioParameterFloatAttributes().withLabel ("ms")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { ParamID::gateThreshold, 1 }, "Gate Threshold",
+        Range { -90.0f, -20.0f, 0.1f }, -60.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("LUFS")));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { ParamID::limiter, 1 }, "Limiter",

@@ -24,6 +24,7 @@ public:
     void setTargetLufs (float lufs) noexcept { gainRider.setTargetLufs (lufs); }
     void setAttackMs (float ms) noexcept { gainRider.setAttackMs (ms); }
     void setReleaseMs (float ms) noexcept { gainRider.setReleaseMs (ms); }
+    void setGateThresholdLufs (float lufs) noexcept { gainRider.setGateThresholdLufs (lufs); }
     void setOutputGainDb (float db) noexcept { outputGainDb = db; }
     void setLimiterThresholdDb (float db) noexcept { limiter.setThresholdDb (db); }
 

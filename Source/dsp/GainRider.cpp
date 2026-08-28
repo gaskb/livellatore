@@ -12,14 +12,32 @@ void GainRider::prepare (double newSampleRate)
 void GainRider::reset()
 {
     smoothedGainDb = 0.0f;
+    gateOpen = true;
 }
 
 float GainRider::computeGainDb (float currentLufs, double deltaTimeSeconds) noexcept
 {
-    if (currentLufs <= -99.0f)
+    // Gate con isteresi: apre/chiude a soglie diverse per evitare di
+    // riaprire e richiudere ad ogni blocco quando il segnale oscilla
+    // proprio intorno alla soglia impostata dall'utente. Il pavimento
+    // interno del LoudnessMeter (-100 LUFS) è sempre sotto il range
+    // consentito per la soglia (min -90, vedi Parameters.h), quindi il
+    // vero silenzio digitale chiude sempre il gate senza bisogno di un
+    // controllo separato.
+    const float openThreshold  = gateThresholdLufs + gateHysteresisDb * 0.5f;
+    const float closeThreshold = gateThresholdLufs - gateHysteresisDb * 0.5f;
+
+    if (gateOpen && currentLufs < closeThreshold)
+        gateOpen = false;
+    else if (! gateOpen && currentLufs > openThreshold)
+        gateOpen = true;
+
+    if (! gateOpen)
     {
-        // Silenzio: non inseguire un target contro il rumore di fondo,
-        // lascia che il gain rilassi verso 0 con il release.
+        // Gate chiuso: non inseguire un target contro rumore di fondo o
+        // silenzio, lascia che il gain rilassi verso 0. "Gate speed" non
+        // è un controllo separato in questa versione: deriva dal release
+        // esistente (vedi commento in testa al file).
         const float releaseCoeff = (float) std::exp (-deltaTimeSeconds / (releaseMs / 1000.0));
         smoothedGainDb = smoothedGainDb * releaseCoeff;
         return smoothedGainDb;
