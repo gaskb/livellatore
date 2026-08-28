@@ -30,6 +30,15 @@ private:
 
     juce::ComboBox presetBox;
     juce::TextButton savePresetButton { "+" };
+    // Numero di versione (JucePlugin_VersionString, singola fonte di
+    // verita' project(Livellatore VERSION X.Y.Z) nel CMakeLists.txt),
+    // mostrato in-GUI invece che nella barra del titolo del sistema: e'
+    // l'unico posto che funziona identico su Standalone/VST3/AU, dato che
+    // la barra del titolo la disegna l'host (o, per la Standalone, il
+    // bootstrap di JUCE stesso — non modificabile senza rimpiazzare
+    // interamente StandaloneFilterApp, sproporzionato per un dettaglio
+    // cosmetico).
+    juce::Label versionLabel;
     juce::StringArray userPresetNamesById; // indicizzato da (itemId - userPresetIdBase)
     std::unique_ptr<juce::AlertWindow> savePresetDialog;
 

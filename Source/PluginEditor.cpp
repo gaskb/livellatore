@@ -42,6 +42,12 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     addAndMakeVisible (savePresetButton);
     refreshPresetBox();
 
+    versionLabel.setText ("v" + juce::String (JucePlugin_VersionString), juce::dontSendNotification);
+    versionLabel.setJustificationType (juce::Justification::centredRight);
+    versionLabel.setFont (juce::Font (juce::FontOptions (10.0f)));
+    versionLabel.setColour (juce::Label::textColourId, LivellatoreLookAndFeel::textColour.withAlpha (0.5f));
+    addAndMakeVisible (versionLabel);
+
     addAndMakeVisible (inputMeter);
     addAndMakeVisible (outputMeter);
     addAndMakeVisible (riderActivityMeter);
@@ -179,6 +185,14 @@ void LivellatoreAudioProcessorEditor::resized()
     limiterSlider.setBounds (bounds.removeFromTop (rowHeight));
     bounds.removeFromTop (8);
     outputGainSlider.setBounds (bounds.removeFromTop (rowHeight));
+
+    // Angolo in basso a destra, indipendente dal flusso principale del
+    // layout (usa i bound interi dell'editor, non `bounds` gia' consumato).
+    // removeFromRight(16) extra: lascia spazio alla maniglia nativa di
+    // resize della finestra, che altrimenti la coprirebbe parzialmente.
+    auto versionArea = getLocalBounds().removeFromBottom (16).removeFromRight (76);
+    versionArea.removeFromRight (16);
+    versionLabel.setBounds (versionArea.reduced (2));
 }
 
 } // namespace livellatore
