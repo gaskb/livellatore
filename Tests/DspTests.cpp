@@ -184,6 +184,72 @@ public:
                 meter.pushBlock (silence);
             expectLessThan (meter.getLoudnessLufs(), -90.0f);
         }
+
+        beginTest ("Dialogue Mode: la loudness resta stabile durante una pausa nel parlato, a differenza del default");
+        {
+            // Finestra da 3s (default), parlato breve (~0.43s) seguito da
+            // una pausa lunga (~2.13s) MA che restando sotto i 3s totali
+            // non fa uscire il parlato dalla finestra per eviction: cosi'
+            // l'unica differenza fra i due meter e' il gating, non quanto
+            // parlato resta fisicamente nella finestra.
+            // Drop atteso senza gating: 10*log10(40/(40+200)) ~= -7.8dB.
+            LoudnessMeter ungatedMeter, gatedMeter;
+            for (auto* meter : { &ungatedMeter, &gatedMeter })
+                meter->prepare (testSampleRate, 2);
+            gatedMeter.setGatingEnabled (true);
+            gatedMeter.setGateThresholdLufs (-40.0f);
+
+            double phase1 = 0.0, phase2 = 0.0;
+            for (int i = 0; i < 40; ++i)
+            {
+                auto block = makeSineBlock (512, 200.0, testSampleRate, phase1);
+                ungatedMeter.pushBlock (block);
+
+                auto block2 = makeSineBlock (512, 200.0, testSampleRate, phase2);
+                gatedMeter.pushBlock (block2);
+            }
+            const float speechLufs = gatedMeter.getLoudnessLufs();
+            expectWithinAbsoluteError (ungatedMeter.getLoudnessLufs(), speechLufs, 0.1f);
+
+            juce::AudioBuffer<float> silence (2, 512);
+            silence.clear();
+            for (int i = 0; i < 200; ++i) // sotto la soglia di gate (-40 LUFS, il pavimento e' -100)
+            {
+                ungatedMeter.pushBlock (silence);
+                gatedMeter.pushBlock (silence);
+            }
+
+            expect (ungatedMeter.getLoudnessLufs() < speechLufs - 5.0f,
+                    "Senza Dialogue Mode la pausa dovrebbe diluire visibilmente la media, ottenuto "
+                        + juce::String (ungatedMeter.getLoudnessLufs()) + " (parlato: " + juce::String (speechLufs) + ")");
+            expectWithinAbsoluteError (gatedMeter.getLoudnessLufs(), speechLufs, 0.5f,
+                "Con Dialogue Mode la loudness dovrebbe restare vicina a quella del parlato ("
+                    + juce::String (speechLufs) + "), ottenuto " + juce::String (gatedMeter.getLoudnessLufs()));
+        }
+
+        beginTest ("Dialogue Mode: pausa piu' lunga dell'intera finestra scende comunque al pavimento");
+        {
+            LoudnessMeter meter;
+            meter.prepare (testSampleRate, 2);
+            meter.setWindowSeconds (1.0f);
+            meter.setGatingEnabled (true);
+            meter.setGateThresholdLufs (-40.0f);
+
+            double phase = 0.0;
+            for (int i = 0; i < 100; ++i)
+            {
+                auto block = makeSineBlock (512, 200.0, testSampleRate, phase);
+                meter.pushBlock (block);
+            }
+            expectGreaterThan (meter.getLoudnessLufs(), -40.0f);
+
+            juce::AudioBuffer<float> silence (2, 512);
+            silence.clear();
+            for (int i = 0; i < 120; ++i) // oltre la finestra di 1s: il parlato esce del tutto
+                meter.pushBlock (silence);
+
+            expectLessThan (meter.getLoudnessLufs(), -90.0f);
+        }
     }
 };
 

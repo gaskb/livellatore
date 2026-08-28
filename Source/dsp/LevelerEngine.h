@@ -24,7 +24,15 @@ public:
     void setTargetLufs (float lufs) noexcept { gainRider.setTargetLufs (lufs); }
     void setAttackMs (float ms) noexcept { gainRider.setAttackMs (ms); }
     void setReleaseMs (float ms) noexcept { gainRider.setReleaseMs (ms); }
-    void setGateThresholdLufs (float lufs) noexcept { gainRider.setGateThresholdLufs (lufs); }
+    void setGateThresholdLufs (float lufs) noexcept
+    {
+        gainRider.setGateThresholdLufs (lufs);
+        loudnessMeter.setGateThresholdLufs (lufs); // stessa soglia, vedi Dialogue Mode
+    }
+    /** "Dialogue Mode" (nato da domanda utente su parlato con pause): la
+     * misura di loudness ignora i tratti sotto la soglia di gate invece
+     * di lasciare che le pause diluiscano la media, vedi LoudnessMeter.h. */
+    void setDialogueMode (bool enabled) noexcept { loudnessMeter.setGatingEnabled (enabled); }
     void setOutputGainDb (float db) noexcept { outputGainDb = db; }
     void setLimiterThresholdDb (float db) noexcept { limiter.setThresholdDb (db); }
 

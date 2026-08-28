@@ -42,6 +42,12 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     addAndMakeVisible (savePresetButton);
     refreshPresetBox();
 
+    dialogueModeToggle.setTooltip ("Esclude dalla misura di loudness i tratti sotto la soglia di gate, "
+                                    "cosi' le pause nel parlato non fanno scendere la lettura.");
+    dialogueModeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        p.apvts, ParamID::dialogueMode, dialogueModeToggle);
+    addAndMakeVisible (dialogueModeToggle);
+
     versionLabel.setText ("v" + juce::String (JucePlugin_VersionString), juce::dontSendNotification);
     versionLabel.setJustificationType (juce::Justification::centredRight);
     versionLabel.setFont (juce::Font (juce::FontOptions (10.0f)));
@@ -69,8 +75,8 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     addAndMakeVisible (outputGainSlider);
 
     setResizable (true, true);
-    setResizeLimits (520, 420, 900, 700);
-    setSize (560, 456);
+    setResizeLimits (520, 456, 900, 740);
+    setSize (560, 492);
     startTimerHz (30);
 }
 
@@ -181,6 +187,8 @@ void LivellatoreAudioProcessorEditor::resized()
     releaseSlider.setBounds (bounds.removeFromTop (rowHeight));
     bounds.removeFromTop (8);
     gateThresholdSlider.setBounds (bounds.removeFromTop (rowHeight));
+    bounds.removeFromTop (8);
+    dialogueModeToggle.setBounds (bounds.removeFromTop (28));
     bounds.removeFromTop (8);
     limiterSlider.setBounds (bounds.removeFromTop (rowHeight));
     bounds.removeFromTop (8);
