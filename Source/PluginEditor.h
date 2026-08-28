@@ -20,8 +20,18 @@ public:
 private:
     void timerCallback() override;
 
+    /** Ricostruisce la lista del preset box (preset di fabbrica + separatore
+     * + preset utente scansionati da disco) senza notificare onChange. */
+    void refreshPresetBox (int idToSelect = 0);
+    void showSavePresetDialog();
+
     LivellatoreAudioProcessor& processorRef;
     LivellatoreLookAndFeel lookAndFeel;
+
+    juce::ComboBox presetBox;
+    juce::TextButton savePresetButton { "+" };
+    juce::StringArray userPresetNamesById; // indicizzato da (itemId - userPresetIdBase)
+    std::unique_ptr<juce::AlertWindow> savePresetDialog;
 
     VuMeterComponent inputMeter { "IN", -60.0f, 6.0f };
     VuMeterComponent outputMeter { "OUT", -60.0f, 6.0f };

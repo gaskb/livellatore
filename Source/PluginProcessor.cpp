@@ -35,6 +35,31 @@ bool LivellatoreAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
     return (set == mono || set == stereo) && layouts.getMainInputChannelSet() == set;
 }
 
+void LivellatoreAudioProcessor::applyFactoryPreset (int index)
+{
+    const auto& factoryPresets = PresetManager::getFactoryPresets();
+    if (index < 0 || (size_t) index >= factoryPresets.size())
+        return;
+
+    for (const auto& [paramID, value] : factoryPresets[(size_t) index].paramValues)
+        apvts.getParameterAsValue (paramID) = value;
+}
+
+bool LivellatoreAudioProcessor::loadUserPreset (const juce::String& name)
+{
+    auto state = presetManager.loadPreset (name);
+    if (! state.isValid())
+        return false;
+
+    apvts.replaceState (state);
+    return true;
+}
+
+bool LivellatoreAudioProcessor::saveCurrentStateAsPreset (const juce::String& name)
+{
+    return presetManager.savePreset (name, apvts.copyState());
+}
+
 void LivellatoreAudioProcessor::updateEngineParametersFromState()
 {
     engine.setInputGainDb (apvts.getRawParameterValue (ParamID::inputGain)->load());
