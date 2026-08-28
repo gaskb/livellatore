@@ -35,6 +35,9 @@ public:
     float getOutputLevelDb() const noexcept { return outputLevelDb; }
     float getRiderGainDb() const noexcept { return gainRider.getCurrentGainDb(); }
     float getLimiterGainReductionDb() const noexcept { return limiter.getGainReductionDb(); }
+    /** Latenza introdotta dal lookahead del limiter: va riportata
+     * all'host per il plugin delay compensation (issue #9). */
+    int getLatencySamples() const noexcept { return limiter.getLatencySamples(); }
     float getCurrentLoudnessLufs() const noexcept { return loudnessMeter.getLoudnessLufs(); }
 
 private:
