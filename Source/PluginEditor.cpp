@@ -46,6 +46,13 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     addAndMakeVisible (outputMeter);
     addAndMakeVisible (riderActivityMeter);
 
+    for (auto* label : { &currentLoudnessLabel, &riderGainLabel })
+    {
+        label->setJustificationType (juce::Justification::centred);
+        label->setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)));
+        addAndMakeVisible (*label);
+    }
+
     addAndMakeVisible (inputGainSlider);
     addAndMakeVisible (targetLevelSlider);
     addAndMakeVisible (attackSlider);
@@ -54,6 +61,8 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     addAndMakeVisible (limiterSlider);
     addAndMakeVisible (outputGainSlider);
 
+    setResizable (true, true);
+    setResizeLimits (480, 420, 900, 700);
     setSize (520, 456);
     startTimerHz (30);
 }
@@ -119,6 +128,12 @@ void LivellatoreAudioProcessorEditor::timerCallback()
     inputMeter.setLevelDb (engine.getInputLevelDb());
     outputMeter.setLevelDb (engine.getOutputLevelDb());
     riderActivityMeter.setLevelDb (engine.getRiderGainDb());
+
+    currentLoudnessLabel.setText (juce::String (engine.getCurrentLoudnessLufs(), 1) + " LUFS",
+                                   juce::dontSendNotification);
+    const float riderGainDb = engine.getRiderGainDb();
+    riderGainLabel.setText ((riderGainDb >= 0.0f ? "+" : "") + juce::String (riderGainDb, 1) + " dB",
+                             juce::dontSendNotification);
 }
 
 void LivellatoreAudioProcessorEditor::paint (juce::Graphics& g)
@@ -137,6 +152,10 @@ void LivellatoreAudioProcessorEditor::resized()
     bounds.removeFromTop (12);
 
     auto meterArea = bounds.removeFromRight (150);
+    auto readoutArea = meterArea.removeFromBottom (36);
+    currentLoudnessLabel.setBounds (readoutArea.removeFromTop (18));
+    riderGainLabel.setBounds (readoutArea);
+
     inputMeter.setBounds (meterArea.removeFromLeft (40).reduced (4));
     riderActivityMeter.setBounds (meterArea.removeFromLeft (60).reduced (4));
     outputMeter.setBounds (meterArea.removeFromLeft (40).reduced (4));

@@ -35,7 +35,11 @@ private:
 
     VuMeterComponent inputMeter { "IN", -60.0f, 6.0f };
     VuMeterComponent outputMeter { "OUT", -60.0f, 6.0f };
-    VuMeterComponent riderActivityMeter { "RIDER", -24.0f, 24.0f };
+    VuMeterComponent riderActivityMeter { "RIDER", -24.0f, 24.0f, true };
+
+    // Readout numerici (issue #4): i meter grafici da soli non danno un
+    // valore leggibile al volo, specie per la loudness corrente.
+    juce::Label currentLoudnessLabel, riderGainLabel;
 
     LevelSliderComponent inputGainSlider, targetLevelSlider, attackSlider,
                           releaseSlider, gateThresholdSlider, limiterSlider, outputGainSlider;
