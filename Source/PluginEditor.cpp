@@ -45,6 +45,7 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     addAndMakeVisible (inputMeter);
     addAndMakeVisible (outputMeter);
     addAndMakeVisible (riderActivityMeter);
+    addAndMakeVisible (limiterGrMeter);
 
     for (auto* label : { &currentLoudnessLabel, &riderGainLabel })
     {
@@ -62,8 +63,8 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     addAndMakeVisible (outputGainSlider);
 
     setResizable (true, true);
-    setResizeLimits (480, 420, 900, 700);
-    setSize (520, 456);
+    setResizeLimits (520, 420, 900, 700);
+    setSize (560, 456);
     startTimerHz (30);
 }
 
@@ -128,6 +129,7 @@ void LivellatoreAudioProcessorEditor::timerCallback()
     inputMeter.setLevelDb (engine.getInputLevelDb());
     outputMeter.setLevelDb (engine.getOutputLevelDb());
     riderActivityMeter.setLevelDb (engine.getRiderGainDb());
+    limiterGrMeter.setLevelDb (std::abs (engine.getLimiterGainReductionDb()));
 
     currentLoudnessLabel.setText (juce::String (engine.getCurrentLoudnessLufs(), 1) + " LUFS",
                                    juce::dontSendNotification);
@@ -151,13 +153,14 @@ void LivellatoreAudioProcessorEditor::resized()
     presetBox.setBounds (presetBar);
     bounds.removeFromTop (12);
 
-    auto meterArea = bounds.removeFromRight (150);
+    auto meterArea = bounds.removeFromRight (190);
     auto readoutArea = meterArea.removeFromBottom (36);
     currentLoudnessLabel.setBounds (readoutArea.removeFromTop (18));
     riderGainLabel.setBounds (readoutArea);
 
     inputMeter.setBounds (meterArea.removeFromLeft (40).reduced (4));
-    riderActivityMeter.setBounds (meterArea.removeFromLeft (60).reduced (4));
+    riderActivityMeter.setBounds (meterArea.removeFromLeft (55).reduced (4));
+    limiterGrMeter.setBounds (meterArea.removeFromLeft (55).reduced (4));
     outputMeter.setBounds (meterArea.removeFromLeft (40).reduced (4));
 
     bounds.removeFromRight (16);
