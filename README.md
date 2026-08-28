@@ -60,6 +60,10 @@ plugin con altri (Gatekeeper la rifiuterebbe su un'altra macchina).
 - **AU validato con `auval`**: `auval -v aufx Lvlr Gasx` — PASS (tipo
   `aufx`/Effect, non `aumf`: essendo un plugin senza MIDI, JUCE lo registra
   come Effect semplice, non Music Effect).
+- **VST3 validato con [pluginval](https://github.com/Tracktion/pluginval)**
+  (`brew install --cask pluginval`): `pluginval --strictness-level 10
+  --validate build/Livellatore_artefacts/VST3/Livellatore.vst3` — SUCCESS,
+  incluso il fuzzing dei parametri, su 44.1/48/96kHz e block size 64-1024.
 - **Pacchetto ad-hoc**: `./scripts/package_macos.sh` crea uno zip con
   VST3+AU+Standalone+README, utilizzabile per condividere il plugin (chi lo
   riceve dovrà comunque approvarlo a mano su Gatekeeper — clic destro >
