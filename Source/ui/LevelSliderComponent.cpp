@@ -7,8 +7,10 @@ LevelSliderComponent::LevelSliderComponent (juce::AudioProcessorValueTreeState& 
                                              const juce::String& paramID,
                                              const juce::String& displayName)
 {
-    nameLabel.setText (displayName, juce::dontSendNotification);
+    // Maiuscolo + bold, stile TriLeveler (vedi temp/ nella root del repo).
+    nameLabel.setText (displayName.toUpperCase(), juce::dontSendNotification);
     nameLabel.setJustificationType (juce::Justification::centredLeft);
+    nameLabel.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)));
     addAndMakeVisible (nameLabel);
 
     slider.setSliderStyle (juce::Slider::LinearHorizontal);
