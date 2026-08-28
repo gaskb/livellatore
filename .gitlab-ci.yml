@@ -1,0 +1,26 @@
+# Pipeline minima (issue #6): configura, builda il target di test DSP ed
+# esegue ctest ad ogni push. Non builda anche VST3/AU/Standalone (non
+# necessario per verificare che DSP e test non si siano rotti, ed evita di
+# dover gestire code signing in CI).
+#
+# Il progetto include il formato AU (solo Apple), quindi serve un runner
+# self-hosted macOS con Xcode/clang command line tools, non un runner
+# Linux condiviso — vedi la nota di chiusura dell'issue #6 per lo stato dei
+# runner su questa istanza (gitlab.gaskb.net) al momento in cui e' stata
+# scritta questa pipeline.
+
+stages:
+  - build
+
+build_and_test:
+  stage: build
+  tags:
+    - macos
+  cache:
+    key: juce-fetchcontent-deps
+    paths:
+      - build/_deps
+  script:
+    - cmake -B build
+    - cmake --build build --target LivellatoreTests -j 4
+    - ctest --test-dir build --output-on-failure
