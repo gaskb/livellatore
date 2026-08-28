@@ -3,6 +3,13 @@
 namespace livellatore
 {
 
+namespace
+{
+    // ID 0 e' riservato da juce::ComboBox per "nessuna selezione": i preset
+    // di fabbrica occupano 1..N, i preset utente partono da questa base.
+    constexpr int userPresetIdBase = 1000;
+}
+
 LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAudioProcessor& p)
     : AudioProcessorEditor (&p),
       processorRef (p),
@@ -16,6 +23,25 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
 {
     setLookAndFeel (&lookAndFeel);
 
+    presetBox.setTextWhenNothingSelected ("No preset");
+    presetBox.onChange = [this]
+    {
+        const int id = presetBox.getSelectedId();
+        if (id == 0)
+            return;
+
+        if (id < userPresetIdBase)
+            processorRef.applyFactoryPreset (id - 1);
+        else if (id - userPresetIdBase < userPresetNamesById.size())
+            processorRef.loadUserPreset (userPresetNamesById[id - userPresetIdBase]);
+    };
+    addAndMakeVisible (presetBox);
+
+    savePresetButton.setTooltip ("Salva lo stato corrente come nuovo preset utente");
+    savePresetButton.onClick = [this] { showSavePresetDialog(); };
+    addAndMakeVisible (savePresetButton);
+    refreshPresetBox();
+
     addAndMakeVisible (inputMeter);
     addAndMakeVisible (outputMeter);
     addAndMakeVisible (riderActivityMeter);
@@ -28,13 +54,63 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     addAndMakeVisible (limiterSlider);
     addAndMakeVisible (outputGainSlider);
 
-    setSize (520, 420);
+    setSize (520, 456);
     startTimerHz (30);
 }
 
 LivellatoreAudioProcessorEditor::~LivellatoreAudioProcessorEditor()
 {
     setLookAndFeel (nullptr);
+}
+
+void LivellatoreAudioProcessorEditor::refreshPresetBox (int idToSelect)
+{
+    presetBox.clear (juce::dontSendNotification);
+
+    int id = 1;
+    for (const auto& preset : PresetManager::getFactoryPresets())
+        presetBox.addItem (preset.name, id++);
+
+    userPresetNamesById = processorRef.presetManager.getUserPresetNames();
+    if (! userPresetNamesById.isEmpty())
+    {
+        presetBox.addSeparator();
+        for (int i = 0; i < userPresetNamesById.size(); ++i)
+            presetBox.addItem (userPresetNamesById[i], userPresetIdBase + i);
+    }
+
+    presetBox.setSelectedId (idToSelect, juce::dontSendNotification);
+}
+
+void LivellatoreAudioProcessorEditor::showSavePresetDialog()
+{
+    savePresetDialog = std::make_unique<juce::AlertWindow> ("Salva preset", "Nome del preset:",
+                                                             juce::MessageBoxIconType::NoIcon);
+    savePresetDialog->addTextEditor ("name", {}, {});
+    savePresetDialog->addButton ("Salva", 1, juce::KeyPress (juce::KeyPress::returnKey));
+    savePresetDialog->addButton ("Annulla", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+
+    // deleteWhenDismissed=false: la finestra la possediamo noi (unique_ptr),
+    // cosi' possiamo leggerne il contenuto nella callback prima di
+    // distruggerla esplicitamente. Con deleteWhenDismissed=true JUCE la
+    // cancella PRIMA di invocare la callback, rendendo getTextEditorContents
+    // qui sotto un use-after-free.
+    savePresetDialog->enterModalState (true, juce::ModalCallbackFunction::create (
+        [this] (int result)
+        {
+            if (result == 1 && savePresetDialog != nullptr)
+            {
+                const auto name = savePresetDialog->getTextEditorContents ("name").trim();
+                if (name.isNotEmpty() && processorRef.saveCurrentStateAsPreset (name))
+                {
+                    refreshPresetBox();
+                    const int idx = userPresetNamesById.indexOf (name);
+                    if (idx >= 0)
+                        presetBox.setSelectedId (userPresetIdBase + idx, juce::dontSendNotification);
+                }
+            }
+            savePresetDialog.reset();
+        }), false);
 }
 
 void LivellatoreAudioProcessorEditor::timerCallback()
@@ -53,6 +129,12 @@ void LivellatoreAudioProcessorEditor::paint (juce::Graphics& g)
 void LivellatoreAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds().reduced (16);
+
+    auto presetBar = bounds.removeFromTop (28);
+    savePresetButton.setBounds (presetBar.removeFromRight (28));
+    presetBar.removeFromRight (8);
+    presetBox.setBounds (presetBar);
+    bounds.removeFromTop (12);
 
     auto meterArea = bounds.removeFromRight (150);
     inputMeter.setBounds (meterArea.removeFromLeft (40).reduced (4));

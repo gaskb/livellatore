@@ -32,6 +32,7 @@ target_sources(Livellatore
     PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
+        Source/PresetManager.cpp
         Source/dsp/LoudnessMeter.cpp
         Source/dsp/GainRider.cpp
         Source/dsp/Limiter.cpp

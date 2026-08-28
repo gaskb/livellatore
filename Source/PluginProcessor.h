@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Parameters.h"
+#include "PresetManager.h"
 #include "dsp/LevelerEngine.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -37,6 +38,15 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
     LevelerEngine& getEngine() noexcept { return engine; }
+
+    /** Applica un preset di fabbrica (indice in PresetManager::getFactoryPresets()). */
+    void applyFactoryPreset (int index);
+    /** Carica un preset utente salvato su disco; false se non trovato/non valido. */
+    bool loadUserPreset (const juce::String& name);
+    /** Salva/sovrascrive lo stato corrente come preset utente. */
+    bool saveCurrentStateAsPreset (const juce::String& name);
+
+    PresetManager presetManager { PresetManager::makeDefaultPresetDirectory (JucePlugin_Manufacturer, JucePlugin_Name) };
 
 private:
     void updateEngineParametersFromState();
