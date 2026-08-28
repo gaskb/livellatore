@@ -14,11 +14,20 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(JUCE)
 
+# AU e' un formato solo Apple: fuori da macOS juce_add_plugin fallirebbe a
+# generare quel target (issue #7 - preparazione per build Windows/Linux,
+# mai compilate/verificate perche' non c'e' un Mac/Windows/Linux dove
+# farlo tutti insieme in questa sessione).
+set(LIVELLATORE_FORMATS VST3 Standalone)
+if (APPLE)
+    list(APPEND LIVELLATORE_FORMATS AU)
+endif()
+
 juce_add_plugin(Livellatore
     COMPANY_NAME "gas"
     PLUGIN_MANUFACTURER_CODE Gasx
     PLUGIN_CODE Lvlr
-    FORMATS VST3 AU Standalone
+    FORMATS ${LIVELLATORE_FORMATS}
     PRODUCT_NAME "Livellatore"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
