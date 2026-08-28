@@ -13,6 +13,7 @@ void GainRider::reset()
 {
     smoothedGainDb = 0.0f;
     gateOpen = true;
+    attackActive = false;
 }
 
 float GainRider::computeGainDb (float currentLufs, double deltaTimeSeconds) noexcept
@@ -46,8 +47,17 @@ float GainRider::computeGainDb (float currentLufs, double deltaTimeSeconds) noex
     float desiredCorrectionDb = targetLufs - currentLufs;
     desiredCorrectionDb = juce::jlimit (-maxCorrectionDb, maxCorrectionDb, desiredCorrectionDb);
 
-    const bool needsMoreCorrection = std::abs (desiredCorrectionDb) > std::abs (smoothedGainDb);
-    const double timeConstantSeconds = (needsMoreCorrection ? attackMs : releaseMs) / 1000.0;
+    // Dead-band con isteresi sulla scelta attack/release (issue #3): sotto
+    // switchDeadbandDb di differenza si mantiene lo stato precedente
+    // invece di rivalutarlo, per non alternare rapidamente le due costanti
+    // di tempo quando il segnale dithera vicino al punto di incrocio.
+    const float correctionDeltaDb = std::abs (desiredCorrectionDb) - std::abs (smoothedGainDb);
+    if (correctionDeltaDb > switchDeadbandDb)
+        attackActive = true;
+    else if (correctionDeltaDb < -switchDeadbandDb)
+        attackActive = false;
+
+    const double timeConstantSeconds = (attackActive ? attackMs : releaseMs) / 1000.0;
     const float coeff = (float) std::exp (-deltaTimeSeconds / timeConstantSeconds);
 
     smoothedGainDb = desiredCorrectionDb + coeff * (smoothedGainDb - desiredCorrectionDb);

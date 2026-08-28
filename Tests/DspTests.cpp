@@ -284,6 +284,37 @@ public:
             expect (! rider.isGateOpen());
             expectLessThan (std::abs (gainDb), 1.0f);
         }
+
+        beginTest ("Dead-band anti-chattering: fluttuazioni di 0.1 LUFS non cambiano fase attack/release (issue #3)");
+        {
+            GainRider rider;
+            rider.prepare (testSampleRate);
+            rider.setTargetLufs (-16.0f);
+            rider.setAttackMs (20.0f);
+            rider.setReleaseMs (1000.0f);
+            rider.setGateThresholdLufs (-90.0f); // gate sempre aperto in questo test
+
+            for (int i = 0; i < 300; ++i)
+                rider.computeGainDb (-22.0f, 0.01);
+
+            int phaseFlips = 0;
+            bool previousPhase = rider.isAttackPhase();
+            for (int i = 0; i < 200; ++i)
+            {
+                // +-0.1 LUFS intorno a -22: sposta la correzione desiderata
+                // di +-0.1dB, sotto lo switchDeadbandDb (0.3dB).
+                const float dither = (i % 2 == 0) ? -22.1f : -21.9f;
+                rider.computeGainDb (dither, 0.01);
+                const bool phase = rider.isAttackPhase();
+                if (phase != previousPhase)
+                    ++phaseFlips;
+                previousPhase = phase;
+            }
+
+            expect (phaseFlips == 0,
+                    "Il dead-band dovrebbe impedire cambi di fase per fluttuazioni di 0.1 LUFS ("
+                        + juce::String (phaseFlips) + " cambi rilevati)");
+        }
     }
 };
 

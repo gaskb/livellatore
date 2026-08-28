@@ -30,6 +30,20 @@ namespace livellatore
 class GainRider
 {
 public:
+    /** Coppie attack/release di partenza per casi d'uso comuni (issue #3).
+     * Punti di partenza ragionevoli basati sulla semantica attack/release
+     * del rider, NON ancora validati con ascolto su materiale reale: quello
+     * resta lavoro aperto (vedi nota di chiusura di #3).
+     */
+    struct AttackReleasePreset
+    {
+        float attackMs;
+        float releaseMs;
+    };
+
+    static constexpr AttackReleasePreset presetVoice      { 80.0f, 400.0f };
+    static constexpr AttackReleasePreset presetMasterBus   { 300.0f, 1200.0f };
+
     void prepare (double sampleRate);
     void reset();
 
@@ -49,6 +63,9 @@ public:
 
     float getCurrentGainDb() const noexcept { return smoothedGainDb; }
     bool isGateOpen() const noexcept { return gateOpen; }
+    /** Diagnostica (anche per test): true se l'ultimo computeGainDb ha usato
+     * la costante di tempo di attack invece che quella di release. */
+    bool isAttackPhase() const noexcept { return attackActive; }
 
 private:
     double sampleRate = 44100.0;
@@ -63,7 +80,16 @@ private:
     // (soglia + metà banda), chiude sotto (soglia - metà banda).
     static constexpr float gateHysteresisDb = 3.0f;
 
+    // Dead-band sulla scelta fra costante di tempo di attack e di release
+    // (issue #3): senza, un segnale che dithera di pochi decimi di dB
+    // intorno al punto in cui "serve più correzione" diventa "serve meno
+    // correzione" farebbe alternare rapidamente le due costanti di tempo,
+    // percepibile come pumping. Sotto questa soglia si mantiene lo stato
+    // precedente invece di rivalutarlo ad ogni blocco.
+    static constexpr float switchDeadbandDb = 0.3f;
+
     bool gateOpen = true;
+    bool attackActive = false;
     float smoothedGainDb = 0.0f;
 };
 
