@@ -58,6 +58,12 @@ private:
     LevelSliderComponent inputGainSlider, targetLevelSlider, attackSlider,
                           releaseSlider, gateThresholdSlider, limiterSlider, outputGainSlider;
 
+    // "Dialogue Mode" (issue nata da domanda utente): la misura di loudness
+    // ignora i tratti sotto la soglia di gate, per non far scendere la
+    // lettura ad ogni pausa nel parlato. Vedi LoudnessMeter.h.
+    juce::ToggleButton dialogueModeToggle { "Dialogue Mode" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> dialogueModeAttachment;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LivellatoreAudioProcessorEditor)
 };
 

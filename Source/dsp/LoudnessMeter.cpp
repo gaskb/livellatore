@@ -30,6 +30,8 @@ void LoudnessMeter::reset()
     window.clear();
     windowSumSquares = 0.0;
     windowNumSamples = 0;
+    gatedSumSquares = 0.0;
+    gatedNumSamples = 0;
     currentLufs = -100.0f;
 }
 
@@ -102,25 +104,61 @@ void LoudnessMeter::pushBlock (const juce::AudioBuffer<float>& buffer)
         }
     }
 
-    window.push_back ({ blockSumSquares, numSamples * channelsToUse });
+    const int blockNumSamples = numSamples * channelsToUse;
+
+    // Dialogue Mode (issue nata da domanda utente su parlato con pause):
+    // un mini-blocco entra nella media "gated" solo se la SUA loudness
+    // (non quella dell'intera finestra) e' sopra soglia — stesso principio
+    // del gating relativo di BS.1770/EBU R128, qui applicato a una
+    // finestra continua invece che a un intero programma.
+    bool includeInGated = true;
+    if (gatingEnabled)
+    {
+        const double blockMeanSquare = blockSumSquares / (double) blockNumSamples;
+        const float blockLufs = blockMeanSquare > 1.0e-10
+            ? (float) (-0.691 + 10.0 * std::log10 (blockMeanSquare))
+            : -100.0f;
+        includeInGated = blockLufs >= gateThresholdLufs;
+    }
+
+    window.push_back ({ blockSumSquares, blockNumSamples, includeInGated });
     windowSumSquares += blockSumSquares;
-    windowNumSamples += numSamples * channelsToUse;
+    windowNumSamples += blockNumSamples;
+    if (includeInGated)
+    {
+        gatedSumSquares += blockSumSquares;
+        gatedNumSamples += blockNumSamples;
+    }
 
     const long long maxWindowSamples = (long long) (windowSeconds * sampleRate * channelsToUse);
     while (windowNumSamples > maxWindowSamples && ! window.empty())
     {
-        windowSumSquares -= window.front().sumOfSquares;
-        windowNumSamples -= window.front().numSamples;
+        const auto& oldest = window.front();
+        windowSumSquares -= oldest.sumOfSquares;
+        windowNumSamples -= oldest.numSamples;
+        if (oldest.includedInGatedSum)
+        {
+            gatedSumSquares -= oldest.sumOfSquares;
+            gatedNumSamples -= oldest.numSamples;
+        }
         window.pop_front();
     }
 
-    if (windowNumSamples <= 0)
+    const double usedSumSquares = gatingEnabled ? gatedSumSquares : windowSumSquares;
+    const long long usedNumSamples = gatingEnabled ? gatedNumSamples : windowNumSamples;
+
+    if (usedNumSamples <= 0)
     {
+        // In Dialogue Mode questo significa "nessun tratto sopra soglia
+        // nell'intera finestra" (pausa piu' lunga della finestra stessa):
+        // il gate del gain rider (soglia condivisa) si occupera' comunque
+        // di congelare la correzione, quindi cadere sul pavimento qui e'
+        // innocuo.
         currentLufs = -100.0f;
         return;
     }
 
-    const double meanSquare = windowSumSquares / (double) windowNumSamples;
+    const double meanSquare = usedSumSquares / (double) usedNumSamples;
     if (meanSquare <= 1.0e-10)
         currentLufs = -100.0f;
     else
