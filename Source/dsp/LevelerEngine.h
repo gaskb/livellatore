@@ -24,6 +24,13 @@ public:
     void setTargetLufs (float lufs) noexcept { gainRider.setTargetLufs (lufs); }
     void setAttackMs (float ms) noexcept { gainRider.setAttackMs (ms); }
     void setReleaseMs (float ms) noexcept { gainRider.setReleaseMs (ms); }
+    /** Range massimo di correzione del rider (richiesta utente): quando
+     * disattivato, usa il tetto di sicurezza di default invece di un
+     * valore "davvero illimitato" (vedi GainRider::defaultMaxCorrectionDb). */
+    void setMaxCorrectionRange (bool enabled, float db) noexcept
+    {
+        gainRider.setMaxCorrectionDb (enabled ? db : GainRider::defaultMaxCorrectionDb);
+    }
     void setGateThresholdLufs (float lufs) noexcept
     {
         gainRider.setGateThresholdLufs (lufs);

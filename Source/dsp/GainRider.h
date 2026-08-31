@@ -44,6 +44,12 @@ public:
     static constexpr AttackReleasePreset presetVoice      { 80.0f, 400.0f };
     static constexpr AttackReleasePreset presetMasterBus   { 300.0f, 1200.0f };
 
+    /** Tetto di sicurezza usato quando l'utente disattiva il limite di
+     * range esplicito (issue nata da richiesta utente, vedi Parameters.h
+     * ParamID::maxCorrectionEnabled): non "illimitato" davvero, un valore
+     * comunque ragionevole che non si aspetta di incontrare in pratica. */
+    static constexpr float defaultMaxCorrectionDb = 24.0f;
+
     void prepare (double sampleRate);
     void reset();
 
@@ -73,7 +79,7 @@ private:
     float targetLufs = -16.0f;
     float attackMs = 200.0f;
     float releaseMs = 800.0f;
-    float maxCorrectionDb = 24.0f;
+    float maxCorrectionDb = defaultMaxCorrectionDb;
     float gateThresholdLufs = -60.0f;
 
     // Larghezza dell'isteresi del gate (schmitt trigger): apre sopra

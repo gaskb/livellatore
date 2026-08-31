@@ -56,7 +56,14 @@ private:
     juce::Label currentLoudnessLabel, riderGainLabel;
 
     LevelSliderComponent inputGainSlider, targetLevelSlider, attackSlider,
-                          releaseSlider, gateThresholdSlider, limiterSlider, outputGainSlider;
+                          releaseSlider, maxCorrectionSlider, gateThresholdSlider,
+                          limiterSlider, outputGainSlider;
+
+    // Range massimo di correzione del rider (richiesta utente): quando
+    // disattivato il rider usa il tetto di sicurezza di default, vedi
+    // GainRider::defaultMaxCorrectionDb.
+    juce::ToggleButton maxCorrectionEnabledToggle { "Limit Rider Range" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> maxCorrectionEnabledAttachment;
 
     // "Dialogue Mode" (issue nata da domanda utente): la misura di loudness
     // ignora i tratti sotto la soglia di gate, per non far scendere la
