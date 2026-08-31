@@ -17,6 +17,7 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
       targetLevelSlider (p.apvts, ParamID::targetLufs, "Target Level"),
       attackSlider (p.apvts, ParamID::attack, "Attack"),
       releaseSlider (p.apvts, ParamID::release, "Release"),
+      maxCorrectionSlider (p.apvts, ParamID::maxCorrection, "Max Correction"),
       gateThresholdSlider (p.apvts, ParamID::gateThreshold, "Gate Threshold"),
       limiterSlider (p.apvts, ParamID::limiter, "Limiter"),
       outputGainSlider (p.apvts, ParamID::outputGain, "Output Gain")
@@ -41,6 +42,12 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     savePresetButton.onClick = [this] { showSavePresetDialog(); };
     addAndMakeVisible (savePresetButton);
     refreshPresetBox();
+
+    maxCorrectionEnabledToggle.setTooltip ("Limita la correzione del rider a +/- il valore di Max Correction, "
+                                            "invece del tetto di sicurezza di default.");
+    maxCorrectionEnabledAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        p.apvts, ParamID::maxCorrectionEnabled, maxCorrectionEnabledToggle);
+    addAndMakeVisible (maxCorrectionEnabledToggle);
 
     dialogueModeToggle.setTooltip ("Esclude dalla misura di loudness i tratti sotto la soglia di gate, "
                                     "cosi' le pause nel parlato non fanno scendere la lettura.");
@@ -70,13 +77,14 @@ LivellatoreAudioProcessorEditor::LivellatoreAudioProcessorEditor (LivellatoreAud
     addAndMakeVisible (targetLevelSlider);
     addAndMakeVisible (attackSlider);
     addAndMakeVisible (releaseSlider);
+    addAndMakeVisible (maxCorrectionSlider);
     addAndMakeVisible (gateThresholdSlider);
     addAndMakeVisible (limiterSlider);
     addAndMakeVisible (outputGainSlider);
 
     setResizable (true, true);
-    setResizeLimits (520, 456, 900, 740);
-    setSize (560, 492);
+    setResizeLimits (520, 492, 900, 780);
+    setSize (560, 528);
     startTimerHz (30);
 }
 
@@ -185,6 +193,10 @@ void LivellatoreAudioProcessorEditor::resized()
     attackSlider.setBounds (bounds.removeFromTop (rowHeight));
     bounds.removeFromTop (8);
     releaseSlider.setBounds (bounds.removeFromTop (rowHeight));
+    bounds.removeFromTop (8);
+    maxCorrectionSlider.setBounds (bounds.removeFromTop (rowHeight));
+    bounds.removeFromTop (8);
+    maxCorrectionEnabledToggle.setBounds (bounds.removeFromTop (28));
     bounds.removeFromTop (8);
     gateThresholdSlider.setBounds (bounds.removeFromTop (rowHeight));
     bounds.removeFromTop (8);

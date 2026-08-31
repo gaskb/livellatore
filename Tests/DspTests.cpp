@@ -298,6 +298,40 @@ public:
             expectLessThan (std::abs (gainDb), 1.0f);
         }
 
+        beginTest ("Max Correction: limita il gain anche se il target richiederebbe di piu' (richiesta utente)");
+        {
+            GainRider rider;
+            rider.prepare (testSampleRate);
+            rider.setTargetLufs (-16.0f);
+            rider.setAttackMs (50.0f);
+            rider.setReleaseMs (200.0f);
+            rider.setMaxCorrectionDb (3.0f); // range stretto: +-3dB
+
+            float gainDb = 0.0f;
+            // Servirebbero 24dB per arrivare al target: il range dovrebbe fermarlo a 3dB
+            for (int i = 0; i < 1000; ++i)
+                gainDb = rider.computeGainDb (-40.0f, 0.01);
+
+            expectWithinAbsoluteError (gainDb, 3.0f, 0.05f,
+                "Atteso gain fermo al range massimo di 3dB, ottenuto " + juce::String (gainDb));
+        }
+
+        beginTest ("Max Correction: il tetto di default resta quello di sempre se non toccato (nessuna regressione)");
+        {
+            GainRider rider;
+            rider.prepare (testSampleRate);
+            rider.setTargetLufs (-16.0f);
+            rider.setAttackMs (50.0f);
+            rider.setReleaseMs (200.0f);
+            // setMaxCorrectionDb non chiamato: deve restare il tetto di default.
+
+            float gainDb = 0.0f;
+            for (int i = 0; i < 1000; ++i)
+                gainDb = rider.computeGainDb (-60.0f, 0.01); // servirebbero 44dB
+
+            expectWithinAbsoluteError (gainDb, GainRider::defaultMaxCorrectionDb, 0.05f);
+        }
+
         beginTest ("Gate con isteresi: non chiude/riapre per piccole oscillazioni intorno alla soglia (issue #2)");
         {
             GainRider rider;

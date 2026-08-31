@@ -94,6 +94,42 @@ public:
                     + juce::String (measuredLufs, 2));
         }
 
+        beginTest ("setMaxCorrectionRange: disabilitato torna al tetto di default, abilitato usa il valore dato");
+        {
+            // Verifica il wiring (richiesta utente): non il comportamento
+            // del clamp in se' (gia' testato in DspTests.cpp/GainRiderTests),
+            // ma che LevelerEngine inoltri correttamente enabled/valore a
+            // GainRider invece del tetto di default quando enabled=true.
+            LevelerEngine engine;
+            engine.prepare (makeSpec());
+            engine.setTargetLufs (-16.0f);
+            engine.setAttackMs (50.0f);
+            engine.setReleaseMs (200.0f);
+            engine.setGateThresholdLufs (-90.0f); // isola il test dal gate (issue #2): qui serve solo aperto
+            engine.setMaxCorrectionRange (true, 3.0f);
+
+            juce::AudioBuffer<float> block;
+            double phase = 0.0;
+            for (int i = 0; i < 1000; ++i)
+            {
+                block.setSize (2, 512, false, false, true);
+                appendSine (block, 220.0, testSampleRate, 0.001, phase); // livello molto basso
+                engine.process (block);
+            }
+            expectWithinAbsoluteError (engine.getRiderGainDb(), 3.0f, 0.2f,
+                "Con il range abilitato a 3dB il rider non dovrebbe superarlo, ottenuto "
+                    + juce::String (engine.getRiderGainDb()));
+
+            engine.setMaxCorrectionRange (false, 3.0f); // disabilitato: il valore va ignorato
+            for (int i = 0; i < 1000; ++i)
+            {
+                block.setSize (2, 512, false, false, true);
+                appendSine (block, 220.0, testSampleRate, 0.001, phase);
+                engine.process (block);
+            }
+            expectGreaterThan (engine.getRiderGainDb(), 10.0f);
+        }
+
         beginTest ("Un click piu' rapido dell'attack del rider viene comunque contenuto dal limiter");
         {
             // Il gain rider lavora con tempi "musicali" (qui attack
