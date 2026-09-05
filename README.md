@@ -109,4 +109,20 @@ piattaforme, va aggiornato questo paragrafo con l'esito reale, non un
 Progetto agli inizi: la struttura è uno scheletro funzionante (compila,
 processa audio, ha GUI e test) ma diversi punti sono volutamente
 semplificati per iterare via backlog — vedi le issue su GitLab
-(`gas/livellatore`) per il dettaglio.
+(`gas/music/livellatore`) per il dettaglio.
+
+## Licenza
+
+Questo progetto è distribuito sotto **GNU Affero General Public License
+v3.0** (vedi [LICENSE](LICENSE)) — scelta per restare conforme ai termini
+di licenza di JUCE senza una licenza commerciale a pagamento: distribuire
+un binario costruito con JUCE richiede o una licenza commerciale JUCE o
+l'uso della sua opzione AGPLv3, e dato che questo repository è comunque
+interamente open source l'AGPLv3 è la scelta naturale, senza costi né
+account JUCE da configurare.
+
+L'AGPLv3 è una licenza copyleft forte: chiunque distribuisca una versione
+modificata di questo codice (incluso l'uso come servizio di rete) deve a
+sua volta renderne disponibile il sorgente sotto gli stessi termini.
+
+Copyright (C) 2026 Gas
