@@ -5,13 +5,18 @@ misura la loudness in ingresso e alza/abbassa automaticamente il gain per
 mantenere l'uscita vicina a un target impostabile (in LUFS), con limiter di
 sicurezza sui transienti.
 
+Livellatore è gratis. Se ti torna utile, sentiti libero di [offrirmi un caffè su Ko-fi](https://ko-fi.com/gaskb) — nessun obbligo.
+
 ## Controlli
 
 - **Input Gain** — corregge il livello di ingresso prima della misura.
 - **Target Level** — loudness desiderata in uscita (LUFS).
 - **Attack** — velocità con cui il gain rider aumenta la correzione quando serve.
 - **Release** — velocità con cui il gain rider torna verso 0 (livello originale) quando la correzione non serve più.
-- **Limiter** — soglia del limiter di sicurezza a valle, per i transienti troppo rapidi per il rider.
+- **Max Correction** (0–20dB) + **Limit Rider Range** — limita la correzione del rider a +/- il valore impostato invece del tetto di sicurezza di default; disattivato di default (nessun limite esplicito).
+- **Gate Threshold** (LUFS) — sotto questa soglia il rider smette di inseguire il target e rilassa verso 0, per non amplificare il rumore di fondo in assenza di segnale utile (isteresi di 3dB per evitare chattering).
+- **Dialogue Mode** — esclude dalla misura di loudness i tratti sotto la soglia di gate, così le pause nel parlato non fanno scendere la lettura (gating relativo in stile BS.1770/EBU R128, adattato a una finestra continua). Disattivato di default (adatto alla musica); attivarlo per parlato/podcast con pause.
+- **Limiter** — soglia del limiter di sicurezza a valle (vero lookahead di 5ms, gain reduction sample-accurate), per i transienti troppo rapidi per il rider.
 - **Output Gain** — makeup gain finale, indipendente dal rider.
 
 ## Struttura del progetto
@@ -28,7 +33,7 @@ Source/
     LevelerEngine.*     Orchestrazione della catena (indipendente da JUCE plugin wrapper)
   ui/
     LivellatoreLookAndFeel.*  Stile grafico (slider, colori)
-    VuMeterComponent.*        Meter verticale riusabile (input/output/rider)
+    VuMeterComponent.*        Meter verticale riusabile (input/output/rider/limiter GR)
     LevelSliderComponent.*    Slider orizzontale con label + attachment APVTS
 Tests/
   DspTests.cpp          Unit test JUCE UnitTest sulla parte DSP (engine-agnostic)
