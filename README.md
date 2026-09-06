@@ -1,11 +1,142 @@
 # Livellatore
 
+*[Italiano sotto / Italian below](#livellatore-italiano)*
+
+Auto-leveling audio plugin (VST3/AU), inspired by Sonic Anomaly TriLeveler: measures input loudness and automatically raises/lowers gain to keep the output close to a settable target (in LUFS), with a safety limiter on transients.
+
+## Controls
+
+- **Input Gain** — corrects the input level before measurement.
+- **Target Level** — desired output loudness (LUFS).
+- **Attack** — how fast the gain rider increases the correction when needed.
+- **Release** — how fast the gain rider returns toward 0 (original level) once the correction is no longer needed.
+- **Max Correction** (0–20dB) + **Limit Rider Range** — caps the rider's correction to +/- the set value instead of the default safety ceiling; off by default (no explicit limit).
+- **Gate Threshold** (LUFS) — below this threshold the rider stops chasing the target and relaxes toward 0, so it doesn't amplify background noise when there's no useful signal (3dB hysteresis to avoid chattering).
+- **Dialogue Mode** — excludes below-gate-threshold portions from the loudness measurement, so pauses in speech don't drag the reading down (relative gating in the style of BS.1770/EBU R128, adapted to a rolling window). Off by default (suited to music); turn it on for speech/podcasts with pauses.
+- **Limiter** — downstream safety limiter threshold (true 5ms lookahead, sample-accurate gain reduction), for transients too fast for the rider to follow.
+- **Output Gain** — final makeup gain, independent of the rider.
+
+## Project layout
+
+```
+Source/
+  PluginProcessor.*   JUCE AudioProcessor wrapper, APVTS, bridge to the DSP engine
+  PluginEditor.*       GUI
+  Parameters.h         APVTS parameter definitions
+  dsp/
+    LoudnessMeter.*     K-weighted loudness (ITU-R BS.1770) over a rolling window
+    GainRider.*         Corrective gain calculation with attack/release
+    Limiter.*           Wrapper around juce::dsp::Limiter
+    LevelerEngine.*     Chain orchestration (independent of the JUCE plugin wrapper)
+  ui/
+    LivellatoreLookAndFeel.*  Visual style (sliders, colors)
+    VuMeterComponent.*        Reusable vertical meter (input/output/rider/limiter GR)
+    LevelSliderComponent.*    Horizontal slider with label + APVTS attachment
+Tests/
+  DspTests.cpp          JUCE UnitTest unit tests on the DSP side (engine-agnostic)
+```
+
+The DSP logic (`Source/dsp/`) doesn't depend on the JUCE plugin wrapper: it
+takes raw buffers and parameters, which makes it testable in isolation (see
+`Tests/`).
+
+## Build
+
+Requires CMake ≥ 3.22 and a C++20 toolchain. JUCE is downloaded automatically
+on first configure via `FetchContent` (needs network access).
+
+```sh
+cmake -B build
+cmake --build build --config Release
+ctest --test-dir build
+```
+
+## Packaging and distribution
+
+A local build (`cmake --build build --config Release`) produces VST3, AU
+(macOS only, via `COPY_PLUGIN_AFTER_BUILD`) and Standalone, automatically
+installed into `~/Library/Audio/Plug-Ins/` — with an **ad-hoc** signature,
+enough for development on your own machine but not for sharing the plugin
+with others (Gatekeeper would reject it on another machine).
+
+- **AU validated with `auval`**: `auval -v aufx Lvlr Gasx` — PASS (type
+  `aufx`/Effect, not `aumf`: since it's a plugin with no MIDI, JUCE
+  registers it as a plain Effect, not a Music Effect).
+- **VST3 validated with [pluginval](https://github.com/Tracktion/pluginval)**
+  (`brew install --cask pluginval`): `pluginval --strictness-level 10
+  --validate build/Livellatore_artefacts/VST3/Livellatore.vst3` — SUCCESS,
+  including parameter fuzzing, across 44.1/48/96kHz and block sizes 64-1024.
+- **Ad-hoc package**: `./scripts/package_macos.sh` creates a zip with
+  VST3+AU+Standalone+README, usable to share the plugin (whoever receives
+  it will still need to approve it manually past Gatekeeper — right-click >
+  Open, or `xattr -dr com.apple.quarantine`).
+- **Signing with a real Developer ID + Apple notarization**: template in
+  `scripts/notarize_macos.sh`, NEVER run automatically — it requires a paid
+  Apple Developer Program account and the user's personal credentials,
+  which should never be shared with an LLM. Run it by hand once you're
+  ready to distribute the plugin publicly.
+- **.pkg installer**: not done yet; for an early-stage plugin a zip with
+  instructions is enough, a proper installer (`pkgbuild`/`productbuild`) is
+  left for whenever it's actually needed.
+- **Installed-version check**: `./scripts/check_version.sh` compares the
+  version declared in `project(Livellatore VERSION X.Y.Z)` with the one
+  actually installed in `~/Library/Audio/Plug-Ins/` (the one a DAW sees).
+  Born from a real incident: `cmake -B build` immediately regenerates the
+  Info.plist/moduleinfo.json inside the build folder for every target
+  (a configure step), but the installed copy only updates once that target
+  is actually rebuilt — a `cmake --build build --target <only-some-targets>`
+  can leave the source already updated while the installed plugin stays on
+  the previous version, with no error at all. **After every version bump,
+  do a full build with `cmake --build build --config Release`** (not
+  partial targets) and then run this script to confirm.
+
+### Windows and Linux
+
+`CMakeLists.txt` is set up to be cross-platform (the AU format is only
+included on Apple via `if (APPLE)`; VST3 and Standalone are already
+platform-agnostic in JUCE), but it **has not been built or tested** on
+Windows or Linux: this repository has only been developed on macOS, and
+there's no Windows/Linux machine or toolchain available to verify it. On
+Linux, JUCE additionally needs system development packages (typically
+`libasound2-dev`, `libx11-dev`, `libfreetype-dev`, `libfontconfig1-dev`,
+`libcurl4-openssl-dev` — the last one isn't needed here, `JUCE_USE_CURL=0`
+is already set). On Windows, Visual Studio (MSVC) with the "Desktop
+development with C++" workload is required. If/when this gets built on one
+of these platforms, this paragraph should be updated with the real outcome,
+not a "should work."
+
+## Status
+
+Early-stage project: the structure is a working skeleton (compiles,
+processes audio, has a GUI and tests) but several parts are deliberately
+simplified to be iterated on via the backlog — see the issues on GitLab
+(`gas/music/livellatore`) for details.
+
+## License
+
+This project is distributed under the **GNU Affero General Public License
+v3.0** (see [LICENSE](LICENSE)) — chosen to stay compliant with JUCE's
+license terms without a paid commercial license: distributing a binary
+built with JUCE requires either a commercial JUCE license or using its
+AGPLv3 option, and since this repository is fully open source anyway,
+AGPLv3 is the natural fit, at no cost and with no JUCE account to set up.
+
+AGPLv3 is a strong copyleft license: anyone distributing a modified
+version of this code (including running it as a network service) must in
+turn make its source available under the same terms.
+
+Copyright (C) 2026 Gas
+
+Livellatore is free. If you find it useful, feel free to [buy me a coffee on Ko-fi](https://ko-fi.com/gaskb) — no obligation at all.
+
+---
+
+# Livellatore (Italiano)
+
 Plugin audio (VST3/AU) di auto-leveling, ispirato a Sonic Anomaly TriLeveler:
 misura la loudness in ingresso e alza/abbassa automaticamente il gain per
 mantenere l'uscita vicina a un target impostabile (in LUFS), con limiter di
 sicurezza sui transienti.
-
-Livellatore è gratis. Se ti torna utile, sentiti libero di [offrirmi un caffè su Ko-fi](https://ko-fi.com/gaskb) — nessun obbligo.
 
 ## Controlli
 
@@ -131,3 +262,5 @@ modificata di questo codice (incluso l'uso come servizio di rete) deve a
 sua volta renderne disponibile il sorgente sotto gli stessi termini.
 
 Copyright (C) 2026 Gas
+
+Livellatore è gratis. Se ti torna utile, sentiti libero di [offrirmi un caffè su Ko-fi](https://ko-fi.com/gaskb) — nessun obbligo.
